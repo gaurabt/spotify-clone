@@ -1,9 +1,9 @@
 import { User } from '@supabase/supabase-js';
-import { createContext, useEffect, useState } from 'react';
+import { createContext, useEffect, useState, useCallback } from 'react';
 
 import { UserDetails, Subscription } from '@/types';
 import { useContext } from 'react';
-import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
+import { createBrowserClient } from '@supabase/ssr';
 
 type UserContextType = {
   accessToken: string | null;
@@ -22,12 +22,28 @@ export interface Props {
 };
 
 export const MyUserContextProvider = (props: Props) => {
-  const supabase = useSupabaseClient();
-  const { user, isLoading: isLoadingUser } = useUser();
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
   const accessToken = user?.user_metadata?.access_token ?? null;
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+
+  useEffect(() => {
+    setIsLoadingUser(true);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setIsLoadingUser(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   const getUserDetails = () => supabase.from('users').select('*').single();
   const getSubscription = () => 
@@ -69,4 +85,12 @@ export const MyUserContextProvider = (props: Props) => {
   };
 
   return <UserContext.Provider value={value} {...props} />;
+}
+
+export const useUser = () => {
+  const context = useContext(UserContext);
+  if (context === undefined) {
+    throw new Error('useUser must be used within a MyUserContextProvider');
+  } 
+  return context;
 }
