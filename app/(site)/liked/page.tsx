@@ -62,6 +62,7 @@ export default function LikedPage() {
                 song={song}
                 isLiked={true}
                 onLikeToggle={() => toggleLike(song.id, true)}
+                playlist={likedSongs}
               />
             ))}
           </div>

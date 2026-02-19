@@ -118,6 +118,7 @@ export default function SearchPage() {
                     song={song}
                     isLiked={likedSongs.has(song.id)}
                     onLikeToggle={() => handleLikeToggle(song.id)}
+                    playlist={results}
                   />
                 ))}
               </div>

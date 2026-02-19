@@ -3,6 +3,7 @@
 import { Database } from '@/types_db';
 import Image from 'next/image';
 import { FaPlay, FaHeart } from 'react-icons/fa';
+import { usePlayer } from '@/providers/PlayerProvider';
 
 type Song = Database["public"]["Tables"]["songs"]["Row"];
 
@@ -11,14 +12,23 @@ interface SongItemProps {
   isLiked?: boolean;
   onLikeToggle?: () => void;
   onClick?: () => void;
+  playlist?: Song[];
 }
 
 const SongItem: React.FC<SongItemProps> = ({ 
   song, 
   isLiked = false, 
   onLikeToggle,
-  onClick 
+  onClick,
+  playlist
 }) => {
+  const { play } = usePlayer();
+
+  const handlePlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    play(song, playlist);
+  };
+
   return (
     <div
       onClick={onClick}
@@ -61,7 +71,10 @@ const SongItem: React.FC<SongItemProps> = ({
             className={isLiked ? 'text-red-400' : 'text-neutral-400'}
           />
         </button>
-        <button className="bg-emerald-500 hover:bg-emerald-400 rounded-full p-2 transition">
+        <button 
+          onClick={handlePlay}
+          className="bg-emerald-500 hover:bg-emerald-400 rounded-full p-2 transition"
+        >
           <FaPlay size={12} className="text-white" />
         </button>
       </div>

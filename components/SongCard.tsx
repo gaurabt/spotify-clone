@@ -3,7 +3,7 @@
 import { Database } from '@/types_db';
 import Image from 'next/image';
 import { FaPlay, FaHeart } from 'react-icons/fa';
-import { useRouter } from 'next/navigation';
+import { usePlayer } from '@/providers/PlayerProvider';
 
 type Song = Database["public"]["Tables"]["songs"]["Row"];
 
@@ -11,10 +11,16 @@ interface SongCardProps {
   song: Song;
   isLiked?: boolean;
   onLikeToggle?: () => void;
+  playlist?: Song[];
 }
 
-const SongCard: React.FC<SongCardProps> = ({ song, isLiked = false, onLikeToggle }) => {
-  const router = useRouter();
+const SongCard: React.FC<SongCardProps> = ({ song, isLiked = false, onLikeToggle, playlist }) => {
+  const { play } = usePlayer();
+
+  const handlePlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    play(song, playlist);
+  };
 
   return (
     <div className="bg-neutral-800 rounded-lg overflow-hidden hover:bg-neutral-700/50 transition cursor-pointer group p-4">
@@ -31,13 +37,19 @@ const SongCard: React.FC<SongCardProps> = ({ song, isLiked = false, onLikeToggle
             <span className="text-neutral-400">No image</span>
           </div>
         )}
-        <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition">
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+          <button
+            onClick={handlePlay}
+            className="bg-emerald-500 hover:bg-emerald-400 rounded-full p-3 transition"
+          >
+            <FaPlay size={16} className="text-white" />
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
               onLikeToggle?.();
             }}
-            className="bg-emerald-500 hover:bg-emerald-400 rounded-full p-3 transition"
+            className="bg-neutral-700 hover:bg-neutral-600 rounded-full p-3 transition"
           >
             <FaHeart 
               size={16} 

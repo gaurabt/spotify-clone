@@ -3,6 +3,7 @@
 import Header from "@/components/Header";
 import ListItem from "@/components/ListItem";
 import SongCard from "@/components/SongCard";
+import SongUpload from '@/components/SongUpload';
 import { useSongs } from "@/hooks/useSongs";
 import { useUser } from "@/hooks/useUser";
 import { isSongLiked, addLikedSong, removeLikedSong } from "@/libs/songQueries";
@@ -90,11 +91,13 @@ export default function Home() {
                 song={song}
                 isLiked={likedSongs.has(song.id)}
                 onLikeToggle={() => handleLikeToggle(song.id)}
+                playlist={songs}
               />
             ))}
           </div>
         )}
       </div>
+      <SongUpload />
     </div>
   );
 }
