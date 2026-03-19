@@ -5,8 +5,6 @@ import SongItem from '@/components/SongItem';
 import { useLikedSongs } from '@/hooks/useLikedSongs';
 import { useUser } from '@/hooks/useUser';
 import useAuthModal from '@/hooks/useAuthModal';
-import { removeLikedSong } from '@/libs/songQueries';
-import toast from 'react-hot-toast';
 
 export default function LikedPage() {
   const { likedSongs, isLoading, toggleLike } = useLikedSongs();
@@ -61,7 +59,7 @@ export default function LikedPage() {
                 key={song.id}
                 song={song}
                 isLiked={true}
-                onLikeToggle={() => toggleLike(song.id, true)}
+                onLikeToggle={() => toggleLike(song)}
                 playlist={likedSongs}
               />
             ))}

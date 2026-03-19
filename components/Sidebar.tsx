@@ -33,7 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   ], [pathname]);
   return ( 
-    <div className="flex h-full">
+    <div className="flex h-full w-full">
       <div
         className="
           hidden
@@ -58,7 +58,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <Library/>
         </Box>
       </div>
-      <main  className="flex-1 h-full overflow-y-auto py-2">
+      <main className="flex-1 overflow-y-auto py-2">
         {children}
       </main>
     </div>

@@ -3,11 +3,9 @@
 import Header from "@/components/Header";
 import ListItem from "@/components/ListItem";
 import SongCard from "@/components/SongCard";
-import SongUpload from '@/components/SongUpload';
 import { useSongs } from "@/hooks/useSongs";
 import { useUser } from "@/hooks/useUser";
-import { isSongLiked, addLikedSong, removeLikedSong } from "@/libs/songQueries";
-import { useState, useEffect } from "react";
+import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { Database } from "@/types_db";
 import toast from "react-hot-toast";
 
@@ -16,45 +14,17 @@ type Song = Database["public"]["Tables"]["songs"]["Row"];
 export default function Home() {
   const { songs, isLoading } = useSongs();
   const { user } = useUser();
-  const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
+  const { likedSongs, toggleLike } = useLikedSongs();
+  const likedSet = new Set(likedSongs.map(s => s.id));
 
-  useEffect(() => {
-    const loadLikedSongs = async () => {
-      if (!user) return;
-
-      const liked = new Set<string>();
-      for (const song of songs) {
-        const isLiked = await isSongLiked(user.id, song.id);
-        if (isLiked) {
-          liked.add(song.id);
-        }
-      }
-      setLikedSongs(liked);
-    };
-
-    loadLikedSongs();
-  }, [songs, user]);
-
-  const handleLikeToggle = async (songId: string) => {
+  const handleLikeToggle = async (song: Song) => {
     if (!user) {
       toast.error("Please login first");
       return;
     }
-
-    const isLiked = likedSongs.has(songId);
-    const newLikedSongs = new Set(likedSongs);
-
-    if (isLiked) {
-      newLikedSongs.delete(songId);
-      await removeLikedSong(user.id, songId);
-      toast.success("Removed from liked songs");
-    } else {
-      newLikedSongs.add(songId);
-      await addLikedSong(user.id, songId);
-      toast.success("Added to liked songs");
-    }
-
-    setLikedSongs(newLikedSongs);
+    const isLiked = likedSet.has(song.id);
+    await toggleLike(song);
+    toast.success(isLiked ? "Removed from liked songs" : "Added to liked songs");
   };
 
   return (
@@ -89,15 +59,14 @@ export default function Home() {
               <SongCard
                 key={song.id}
                 song={song}
-                isLiked={likedSongs.has(song.id)}
-                onLikeToggle={() => handleLikeToggle(song.id)}
+                isLiked={likedSet.has(song.id)}
+                onLikeToggle={() => handleLikeToggle(song)}
                 playlist={songs}
               />
             ))}
           </div>
         )}
       </div>
-      <SongUpload />
     </div>
   );
 }

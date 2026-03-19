@@ -2,7 +2,7 @@
 
 import { Database } from '@/types_db';
 import Image from 'next/image';
-import { FaPlay, FaHeart } from 'react-icons/fa';
+import { FaPlay, FaPause, FaHeart } from 'react-icons/fa';
 import { usePlayer } from '@/providers/PlayerProvider';
 
 type Song = Database["public"]["Tables"]["songs"]["Row"];
@@ -15,11 +15,16 @@ interface SongCardProps {
 }
 
 const SongCard: React.FC<SongCardProps> = ({ song, isLiked = false, onLikeToggle, playlist }) => {
-  const { play } = usePlayer();
+  const { play, togglePlayPause, currentSong, isPlaying } = usePlayer();
+  const isCurrentSong = currentSong?.id === song.id;
 
   const handlePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
-    play(song, playlist);
+    if (isCurrentSong) {
+      togglePlayPause();
+    } else {
+      play(song, playlist);
+    }
   };
 
   return (
@@ -42,7 +47,7 @@ const SongCard: React.FC<SongCardProps> = ({ song, isLiked = false, onLikeToggle
             onClick={handlePlay}
             className="bg-emerald-500 hover:bg-emerald-400 rounded-full p-3 transition"
           >
-            <FaPlay size={16} className="text-white" />
+            {isCurrentSong && isPlaying ? <FaPause size={16} className="text-white" /> : <FaPlay size={16} className="text-white" />}
           </button>
           <button
             onClick={(e) => {

@@ -1,9 +1,20 @@
-import React, { useState } from 'react';
-import { useSupabaseClient } from '@supabase/auth-helpers-react';
-import { toast } from 'react-hot-toast';
+'use client';
 
-const SongUpload = () => {
-  const supabase = useSupabaseClient();
+import React, { useState } from 'react';
+import { createClient } from '@/libs/supabaseClient';
+import { toast } from 'react-hot-toast';
+import Modal from './Modal';
+import { useUser } from '@/hooks/useUser';
+
+interface SongUploadProps {
+  isOpen: boolean;
+  onChange: (open: boolean) => void;
+  onSuccess?: () => void;
+}
+
+const SongUpload: React.FC<SongUploadProps> = ({ isOpen, onChange, onSuccess }) => {
+  const supabase = createClient();
+  const { user } = useUser();
   const [songTitle, setSongTitle] = useState('');
   const [artist, setArtist] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -22,6 +33,11 @@ const SongUpload = () => {
       return;
     }
 
+    if (!user) {
+      toast.error('You must be logged in to upload songs.');
+      return;
+    }
+
     setIsUploading(true);
 
     try {
@@ -30,73 +46,104 @@ const SongUpload = () => {
         .upload(`public/${file.name}`, file);
 
       if (uploadError) {
+        console.error('Upload error:', uploadError);
         throw uploadError;
       }
+
+      console.log('Upload data:', uploadData);
+
+      const filePath = uploadData?.path || `public/${file.name}`;
 
       const { data: insertData, error: insertError } = await supabase
         .from('songs')
         .insert({
+          id: crypto.randomUUID(),
           title: songTitle,
-          artist,
-          file_path: uploadData.path,
+          author: artist,
+          song_path: filePath,
+          user_id: user.id,
         });
 
       if (insertError) {
+        console.error('Insert error:', insertError);
         throw insertError;
       }
 
+      console.log('Insert success:', insertData);
+      
+      // Add logging to verify the insert
+      if (!insertError && insertData) {
+        console.log('Song record created:', insertData);
+      }
+      
       toast.success('Song uploaded successfully!');
       setSongTitle('');
       setArtist('');
       setFile(null);
+      
+      // Call onSuccess callback and close modal
+      // Add a small delay to ensure database persistence
+      setTimeout(() => {
+        console.log('Triggering refresh...');
+        onSuccess?.();
+        onChange(false);
+      }, 1000);
     } catch (error) {
-      console.error(error);
-      toast.error('Failed to upload song.');
+      console.error('Full error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload song';
+      toast.error(errorMessage);
     } finally {
       setIsUploading(false);
     }
   };
 
   return (
-    <div className="p-4 bg-gray-800 rounded-md">
-      <h2 className="text-xl font-semibold text-white mb-4">Upload a Song</h2>
+    <Modal
+      isOpen={isOpen}
+      onChange={onChange}
+      title="Upload a Song"
+      description="Add a new song to your library"
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Song Title</label>
+          <label className="block text-sm font-medium text-neutral-400 mb-2">Song Title</label>
           <input
             type="text"
             value={songTitle}
             onChange={(e) => setSongTitle(e.target.value)}
-            className="w-full p-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter song title"
+            className="w-full px-3 py-2 rounded-md bg-neutral-700 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-green-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Artist</label>
+          <label className="block text-sm font-medium text-neutral-400 mb-2">Artist</label>
           <input
             type="text"
             value={artist}
             onChange={(e) => setArtist(e.target.value)}
-            className="w-full p-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter artist name"
+            className="w-full px-3 py-2 rounded-md bg-neutral-700 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-green-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Song File</label>
+          <label className="block text-sm font-medium text-neutral-400 mb-2">Song File</label>
           <input
             type="file"
             accept="audio/*"
             onChange={handleFileChange}
-            className="w-full text-gray-300"
+            className="w-full px-3 py-2 rounded-md bg-neutral-700 text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500 file:bg-neutral-600 file:text-white file:border-0 file:mr-3 file:cursor-pointer hover:file:bg-neutral-500"
           />
+          {file && <p className="text-sm text-neutral-400 mt-1">Selected: {file.name}</p>}
         </div>
         <button
           type="submit"
           disabled={isUploading}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+          className="w-full px-3 py-3 rounded-full bg-green-500 text-black font-semibold hover:opacity-75 disabled:opacity-50 disabled:cursor-not-allowed transition"
         >
           {isUploading ? 'Uploading...' : 'Upload Song'}
         </button>
       </form>
-    </div>
+    </Modal>
   );
 };
 

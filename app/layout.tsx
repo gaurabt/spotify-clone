@@ -7,6 +7,7 @@ import UserProvider from "@/providers/UserProvider";
 import ModalProvider from "@/providers/ModalProvider";
 import ToasterProvider from "@/providers/ToasterProvider";
 import { PlayerProvider } from "@/providers/PlayerProvider";
+import { LikedSongsProvider } from "@/providers/LikedSongsProvider";
 import PlayerRoot from "@/components/PlayerRoot";
 
 const font = Figtree({
@@ -32,11 +33,17 @@ export default function RootLayout({
         <SupabaseProvider>
           <UserProvider>
             <PlayerProvider>
-              <ModalProvider />
-              <Sidebar>
-                {children}
-              </Sidebar>
-              <PlayerRoot />
+              <LikedSongsProvider>
+                <ModalProvider />
+                <div className="flex flex-col h-screen">
+                  <div className="flex flex-1 overflow-hidden">
+                    <Sidebar>
+                      {children}
+                    </Sidebar>
+                  </div>
+                  <PlayerRoot />
+                </div>
+              </LikedSongsProvider>
             </PlayerProvider>
           </UserProvider>
         </SupabaseProvider>
