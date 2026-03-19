@@ -57,6 +57,7 @@ export async function insertSongAction(
   if (!supabase || !user) return { error: 'Unauthorized' };
 
   const { error } = await supabase.from('songs').insert({
+    id: crypto.randomUUID(),
     title: trimmedTitle,
     author: trimmedAuthor,
     song_path: songPath,
