@@ -1,7 +1,8 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect } from 'react';
-import { getUserLikedSongs, addLikedSong, removeLikedSong } from '@/libs/songQueries';
+import { getUserLikedSongs } from '@/libs/songQueries';
+import { likeSongAction, unlikeSongAction } from '@/app/actions/songs';
 import { useUser } from '@/hooks/useUser';
 import { Database } from '@/types_db';
 
@@ -41,12 +42,15 @@ export const LikedSongsProvider = ({ children }: { children: React.ReactNode }) 
     if (!user) return;
     const isLiked = likedSongs.some(s => s.id === song.id);
 
+    // Optimistic update
     if (isLiked) {
       setLikedSongs(prev => prev.filter(s => s.id !== song.id));
-      await removeLikedSong(user.id, song.id);
+      const { error } = await unlikeSongAction(song.id);
+      if (error) setLikedSongs(prev => [song, ...prev]); // revert on failure
     } else {
       setLikedSongs(prev => [song, ...prev]);
-      await addLikedSong(user.id, song.id);
+      const { error } = await likeSongAction(song.id);
+      if (error) setLikedSongs(prev => prev.filter(s => s.id !== song.id)); // revert on failure
     }
   };
 

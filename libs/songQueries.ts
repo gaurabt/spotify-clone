@@ -35,11 +35,14 @@ export const getSongById = async (id: string): Promise<Song | null> => {
 };
 
 export const searchSongs = async (query: string): Promise<Song[]> => {
+  const sanitized = query.trim().slice(0, 100);
+  if (!sanitized) return [];
+
   const supabase = createClient();
   const { data, error } = await supabase
     .from("songs")
     .select("*")
-    .or(`title.ilike.%${query}%,author.ilike.%${query}%`)
+    .or(`title.ilike.%${sanitized}%,author.ilike.%${sanitized}%`)
     .order("created_at", { ascending: false });
 
   if (error) {

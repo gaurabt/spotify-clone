@@ -5,6 +5,10 @@ import { createClient } from '@/libs/supabaseClient';
 import { toast } from 'react-hot-toast';
 import Modal from './Modal';
 import { useUser } from '@/hooks/useUser';
+import { insertSongAction } from '@/app/actions/songs';
+
+const ALLOWED_AUDIO_TYPES = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/flac', 'audio/aac', 'audio/mp4'];
+const MAX_FILE_SIZE_MB = 50;
 
 interface SongUploadProps {
   isOpen: boolean;
@@ -25,7 +29,7 @@ const SongUpload: React.FC<SongUploadProps> = ({ isOpen, onChange, onSuccess }) 
     setFile(selectedFile);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!songTitle || !artist || !file) {
@@ -38,60 +42,39 @@ const SongUpload: React.FC<SongUploadProps> = ({ isOpen, onChange, onSuccess }) 
       return;
     }
 
+    if (!ALLOWED_AUDIO_TYPES.includes(file.type)) {
+      toast.error('Invalid file type. Please upload an audio file (MP3, WAV, OGG, FLAC, AAC).');
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      toast.error(`File too large. Maximum size is ${MAX_FILE_SIZE_MB}MB.`);
+      return;
+    }
+
     setIsUploading(true);
 
     try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'mp3';
+      const safePath = `public/${crypto.randomUUID()}.${ext}`;
+
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('songs')
-        .upload(`public/${file.name}`, file);
+        .upload(safePath, file);
 
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        throw uploadError;
-      }
+      if (uploadError) throw new Error(uploadError.message);
 
-      console.log('Upload data:', uploadData);
+      const { error } = await insertSongAction(songTitle, artist, uploadData.path);
+      if (error) throw new Error(error);
 
-      const filePath = uploadData?.path || `public/${file.name}`;
-
-      const { data: insertData, error: insertError } = await supabase
-        .from('songs')
-        .insert({
-          id: crypto.randomUUID(),
-          title: songTitle,
-          author: artist,
-          song_path: filePath,
-          user_id: user.id,
-        });
-
-      if (insertError) {
-        console.error('Insert error:', insertError);
-        throw insertError;
-      }
-
-      console.log('Insert success:', insertData);
-      
-      // Add logging to verify the insert
-      if (!insertError && insertData) {
-        console.log('Song record created:', insertData);
-      }
-      
       toast.success('Song uploaded successfully!');
       setSongTitle('');
       setArtist('');
       setFile(null);
-      
-      // Call onSuccess callback and close modal
-      // Add a small delay to ensure database persistence
-      setTimeout(() => {
-        console.log('Triggering refresh...');
-        onSuccess?.();
-        onChange(false);
-      }, 1000);
+      onSuccess?.();
+      onChange(false);
     } catch (error) {
-      console.error('Full error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to upload song';
-      toast.error(errorMessage);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload song');
     } finally {
       setIsUploading(false);
     }

@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import SongCard from '@/components/SongCard';
-import { searchSongs, isSongLiked, addLikedSong, removeLikedSong } from '@/libs/songQueries';
+import { searchSongs } from '@/libs/songQueries';
+import { useLikedSongs } from '@/hooks/useLikedSongs';
 import { useUser } from '@/hooks/useUser';
 import { Database } from '@/types_db';
 import toast from 'react-hot-toast';
@@ -12,18 +12,17 @@ import toast from 'react-hot-toast';
 type Song = Database["public"]["Tables"]["songs"]["Row"];
 
 export default function SearchPage() {
-  const router = useRouter();
   const { user } = useUser();
+  const { likedSongs, toggleLike } = useLikedSongs();
+  const likedSet = new Set(likedSongs.map(s => s.id));
+
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Song[]>([]);
-  const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
   const [isSearching, setIsSearching] = useState(false);
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
 
     if (!query.trim()) {
       setResults([]);
@@ -37,50 +36,14 @@ export default function SearchPage() {
       setIsSearching(false);
     }, 300);
 
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
+    return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
   }, [query]);
 
-  useEffect(() => {
-    const loadLikedSongs = async () => {
-      if (!user) return;
-
-      const liked = new Set<string>();
-      for (const song of results) {
-        const isLiked = await isSongLiked(user.id, song.id);
-        if (isLiked) {
-          liked.add(song.id);
-        }
-      }
-      setLikedSongs(liked);
-    };
-
-    loadLikedSongs();
-  }, [results, user]);
-
-  const handleLikeToggle = async (songId: string) => {
-    if (!user) {
-      toast.error('Please login first');
-      return;
-    }
-
-    const isLiked = likedSongs.has(songId);
-    const newLikedSongs = new Set(likedSongs);
-
-    if (isLiked) {
-      newLikedSongs.delete(songId);
-      await removeLikedSong(user.id, songId);
-      toast.success('Removed from liked songs');
-    } else {
-      newLikedSongs.add(songId);
-      await addLikedSong(user.id, songId);
-      toast.success('Added to liked songs');
-    }
-
-    setLikedSongs(newLikedSongs);
+  const handleLikeToggle = async (song: Song) => {
+    if (!user) { toast.error('Please login first'); return; }
+    const isLiked = likedSet.has(song.id);
+    await toggleLike(song);
+    toast.success(isLiked ? 'Removed from liked songs' : 'Added to liked songs');
   };
 
   return (
@@ -95,6 +58,7 @@ export default function SearchPage() {
             placeholder="Search songs or artists..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            maxLength={100}
             className="w-full px-4 py-2 bg-neutral-800 text-white rounded-full placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
           />
         </div>
@@ -103,9 +67,7 @@ export default function SearchPage() {
       <div className="mt-2 mb-7 px-6">
         {query && (
           <div>
-            <h2 className="text-white text-2xl font-semibold mb-4">
-              Results
-            </h2>
+            <h2 className="text-white text-2xl font-semibold mb-4">Results</h2>
             {isSearching ? (
               <div className="text-neutral-400">Searching...</div>
             ) : results.length === 0 ? (
@@ -116,8 +78,8 @@ export default function SearchPage() {
                   <SongCard
                     key={song.id}
                     song={song}
-                    isLiked={likedSongs.has(song.id)}
-                    onLikeToggle={() => handleLikeToggle(song.id)}
+                    isLiked={likedSet.has(song.id)}
+                    onLikeToggle={() => handleLikeToggle(song)}
                     playlist={results}
                   />
                 ))}
